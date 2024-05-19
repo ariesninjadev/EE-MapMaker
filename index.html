@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            table {
+                border-collapse: collapse;
+            }
+
+            td {
+                width: 25px;
+                height: 25px;
+                border: 1px solid black;
+                text-align: center;
+                background-size: cover;
+            }
+
+            button {
+                height: 25px;
+                border: 1px solid black;
+                text-align: center;
+                background-size: cover;
+            }
+
+            .tileButton {
+                font-size: 7px;
+                width: 40px;
+                height: 40px;
+                border: 1px solid black;
+                text-align: center;
+                background-size: cover;
+            }
+
+            body {
+                -webkit-touch-callout: none; /* iOS Safari */
+                -webkit-user-select: none; /* Safari */
+                -khtml-user-select: none; /* Konqueror HTML */
+                -moz-user-select: none; /* Old versions of Firefox */
+                -ms-user-select: none; /* Internet Explorer/Edge */
+                user-select: none; /* Non-prefixed version, currently
+                                      supported by Chrome, Edge, Opera and Firefox */
+            }
+
+            .selected {
+                border: 3px solid yellow;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Map Maker</h2>
+
+        <button onclick="importMap()">Import Map</button>
+        <button onclick="exportMap()">Export Map</button>
+        <button onclick="clearMap()">Clear Map</button>
+
+        <br /><br />
+
+        <table id="map"></table>
+
+        <br /><br />
+
+        <div id="tileSelector"></div>
+
+        <br /><br />
+
+        <button id="clearBtn">Erase</button>
+        <button id="horizontalMirror">Horizontal Mirror</button>
+        <button id="verticalMirror">Vertical Mirror</button>
+
+        <script>
+            var tileCount = 15;
+
+            var map = new Array(20).fill(0).map(() => new Array(30).fill(0));
+            var isMouseDown = false;
+            var selectedTile = 0;
+            var selectedButton = null;
+            var horizontalMirror = false;
+            var verticalMirror = false;
+
+            window.onload = function () {
+                var table = document.getElementById("map");
+                var rightMouseDown = false;
+
+                for (var i = 0; i < 20; i++) {
+                    var row = table.insertRow();
+                    for (var j = 0; j < 30; j++) {
+                        var cell = row.insertCell();
+                        (function (i, j, cell) {
+                            var toggleCell = createOnClickFunction(i, j, cell);
+                            cell.onmousedown = function (event) {
+                                isMouseDown = true;
+                                if (event.button === 2) {
+                                    rightMouseDown = true;
+                                    eraseCell(i, j, cell);
+                                } else {
+                                    toggleCell();
+                                }
+                            };
+                            cell.onmouseup = function () {
+                                isMouseDown = false;
+                                rightMouseDown = false;
+                            };
+                            cell.onmouseover = function () {
+                                if (rightMouseDown) {
+                                    eraseCell(i, j, cell);
+                                } else if (isMouseDown) {
+                                    toggleCell();
+                                }
+                            };
+                            cell.oncontextmenu = function (event) {
+                                event.preventDefault(); // Prevent the context menu from showing up
+                                eraseCell(i, j, cell);
+                            };
+                        })(i, j, cell);
+                    }
+                }
+
+                var tileSelector = document.getElementById("tileSelector");
+                for (var i = 1; i <= tileCount; i++) {
+                    var button = document.createElement("button");
+                    button.className = "tileButton";
+                    button.style.backgroundImage = "url('tiles/" + i + ".png')";
+                    button.textContent = i;
+                    button.id = "tile" + i; // Add this line to set the button ID
+                    button.onclick = function () {
+                        selectedTile = this.textContent;
+                        if (selectedButton) {
+                            selectedButton.classList.remove("selected");
+                        }
+                        this.classList.add("selected");
+                        selectedButton = this;
+                    };
+                    tileSelector.appendChild(button);
+                }
+
+                var clearButton = document.getElementById("clearBtn");
+                clearButton.onclick = function () {
+                    selectedTile = 0;
+                    if (selectedButton) {
+                        selectedButton.classList.remove("selected");
+                    }
+                    this.classList.add("selected");
+                    selectedButton = this;
+                };
+
+                var horizontalMirrorButton =
+                    document.getElementById("horizontalMirror");
+                horizontalMirrorButton.onclick = function () {
+                    horizontalMirror = !horizontalMirror;
+                    this.classList.toggle("selected");
+                };
+
+                var verticalMirrorButton =
+                    document.getElementById("verticalMirror");
+                verticalMirrorButton.onclick = function () {
+                    verticalMirror = !verticalMirror;
+                    this.classList.toggle("selected");
+                };
+            };
+
+            function createOnClickFunction(i, j, cell) {
+                return function () {
+                    if (!isMouseDown) return;
+                    var tile = Number(selectedTile); // Convert selectedTile to a number
+                    if (verticalMirror) tile += 1000;
+                    if (horizontalMirror) tile = -tile;
+                    if (map[i][j] == tile && tile != 0) return;
+                    map[i][j] = tile;
+                    var imageUrl =
+                        "url('tiles/" + Math.abs(selectedTile) + ".png')";
+                    cell.style.backgroundImage = tile ? imageUrl : "";
+                    cell.style.transform =
+                        (tile < 0 ? "scaleX(-1) " : "") +
+                        (Math.abs(tile) >= 1000 ? "scaleY(-1)" : "");
+                };
+            }
+
+            function exportMap() {
+    var mapString = JSON.stringify(map);
+    mapString = mapString.replace(/\[/g, '{').replace(/\]/g, '}'); // Replace [] with {}
+    document.write(mapString);
+}
+
+function importMap() {
+    var mapString = prompt("Enter the map string:");
+    mapString = mapString.replace(/{/g, '[').replace(/}/g, ']'); // Replace {} with []
+    map = JSON.parse(mapString);
+    var table = document.getElementById("map");
+    for (var i = 0; i < 20; i++) {
+        for (var j = 0; j < 30; j++) {
+            var cell = table.rows[i].cells[j];
+            var tile = map[i][j];
+            var imageUrl = "url('tiles/" + Math.abs(tile % 1000) + ".png')";
+            cell.style.backgroundImage = tile ? imageUrl : "";
+            cell.style.transform = (tile < 0 ? "scaleX(-1) " : "") + (Math.abs(tile) >= 1000 ? "scaleY(-1)" : "");
+        }
+    }
+}
+            // clear the map
+            function clearMap() {
+                var table = document.getElementById("map");
+                for (var i = 0; i < 20; i++) {
+                    for (var j = 0; j < 30; j++) {
+                        var cell = table.rows[i].cells[j];
+                        map[i][j] = 0;
+                        cell.style.backgroundImage = "";
+                    }
+                }
+            }
+
+            function eraseCell(i, j, cell) {
+                map[i][j] = 0;
+                cell.style.backgroundImage = "";
+                cell.style.transform = "";
+            }
+
+            var tileInput = "";
+
+            window.onkeydown = function (event) {
+                var key = event.key;
+                var horizontalMirrorButton =
+                    document.getElementById("horizontalMirror");
+                var verticalMirrorButton =
+                    document.getElementById("verticalMirror");
+                var clearButton = document.getElementById("clearBtn");
+
+                // Check if the key is a number
+                if (!isNaN(key) && key != "0") {
+                    tileInput += key;
+                } else {
+                    switch (key) {
+                        case "Enter":
+                            if (tileInput) {
+                                clearButton.classList.remove("selected");
+                                if (selectedButton) {
+                                    selectedButton.classList.remove("selected");
+                                }
+                                selectedTile = Number(tileInput);
+                                selectedButton = document.getElementById(
+                                    "tile" + selectedTile
+                                );
+                                selectedButton.classList.add("selected");
+                                tileInput = "";
+                            }
+                            break;
+                        case "0":
+                            if (selectedButton) {
+                                selectedButton.classList.remove("selected");
+                            }
+                            clearButton.classList.add("selected");
+                            selectedTile = 0;
+                            break;
+                        case "Backspace":
+                            if (selectedButton) {
+                                selectedButton.classList.remove("selected");
+                            }
+                            clearButton.classList.add("selected");
+                            selectedTile = 0;
+                            break;
+                        case "h":
+                        case "ArrowLeft":
+                        case "ArrowRight":
+                            horizontalMirror = !horizontalMirror;
+                            horizontalMirrorButton.classList.toggle("selected");
+                            break;
+                        case "v":
+                        case "ArrowUp":
+                        case "ArrowDown":
+                            verticalMirror = !verticalMirror;
+                            verticalMirrorButton.classList.toggle("selected");
+                            break;
+                    }
+                }
+            };
+        </script>
+    </body>
+</html>
