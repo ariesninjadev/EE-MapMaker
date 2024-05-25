@@ -67,7 +67,7 @@
         <button id="verticalMirror">Vertical Mirror</button>
 
         <script>
-            var tileCount = 15;
+            var tileCount = 75;
 
             var map = new Array(20).fill(0).map(() => new Array(30).fill(0));
             var isMouseDown = false;
@@ -130,6 +130,9 @@
                         selectedButton = this;
                     };
                     tileSelector.appendChild(button);
+                    if (i % 15 == 0) {
+                        tileSelector.innerHTML += "<br>";
+                    }
                 }
 
                 var clearButton = document.getElementById("clearBtn");
